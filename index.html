@@ -473,12 +473,11 @@ function doAdd(type){
   var date = document.getElementById(type==='expense'?'eDate':'iDate').value;
   if(!amt||amt<=0){ toast('Enter a valid amount'); return; }
   if(!cat){ toast('Select a category'); return; }
-  if(!desc){ toast('Add a description'); return; }
   if(!date){ toast('Pick a date'); return; }
   var btnId = type==='expense'?'addExpBtn':'addIncBtn';
   var btn   = document.getElementById(btnId);
   btn.disabled=true; btn.textContent='Saving...';
-  gasCall({action:'add',amount:amt,cat:cat,desc:desc,date:date,by:user,type:type},function(err,res){
+  gasCall({action:'add',amount:amt,cat:cat,desc:desc,date:date,by:user,entrytype:type},function(err,res){
     if(err||(res&&res.error)){
       toast('Save failed: '+(err?err.message:res.error));
       btn.disabled=false; btn.textContent=type==='expense'?'Add Expense':'Add Income';
@@ -530,7 +529,7 @@ function render(){
   if(!filtered.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
   tbody.innerHTML=filtered.map(function(e){
-    var isInc = String(e.type).trim()==='income';
+    var isInc = String(e.type).trim().toLowerCase()==='income';
     var cls   = 'cat-'+(e.cat||'ExpOther');
     var label = CAT_LABELS[e.cat]||e.cat||'Other';
     var short = label.length>15 ? label.slice(0,13)+'…' : label;
@@ -553,8 +552,8 @@ function render(){
 function updateStats(){
   var m=toMonth();
   var mData=data.filter(function(e){ return String(e.date).indexOf(m)===0; });
-  var mInc=mData.filter(function(e){ return String(e.type).trim()==='income'; }).reduce(function(s,e){ return s+(parseFloat(e.amount)||0); },0);
-  var mExp=mData.filter(function(e){ return String(e.type).trim()!=='income'; }).reduce(function(s,e){ return s+(parseFloat(e.amount)||0); },0);
+  var mInc=mData.filter(function(e){ return String(e.type).trim().toLowerCase()==='income'; }).reduce(function(s,e){ return s+(parseFloat(e.amount)||0); },0);
+  var mExp=mData.filter(function(e){ return String(e.type).trim().toLowerCase()==='expense'; }).reduce(function(s,e){ return s+(parseFloat(e.amount)||0); },0);
   var mBal=mInc-mExp;
   document.getElementById('s-inc').textContent=fmt(mInc);
   document.getElementById('s-exp').textContent=fmt(mExp);
@@ -570,15 +569,15 @@ function doExport(){
   var rows=filtered.map(function(e){
     return {
       'Date':e.date,
-      'Type':String(e.type).trim()==='income'?'Income':'Expense',
+      'Type':String(e.type).trim().toLowerCase()==='income'?'Income':'Expense',
       'Amount (₹)':parseFloat(e.amount),
       'Category':CAT_LABELS[e.cat]||e.cat,
       'Description':e.desc,
       'Entered By':e.by
     };
   });
-  var totInc=filtered.filter(function(e){return String(e.type).trim()==='income';}).reduce(function(s,e){return s+parseFloat(e.amount);},0);
-  var totExp=filtered.filter(function(e){return String(e.type).trim()!=='income';}).reduce(function(s,e){return s+parseFloat(e.amount);},0);
+  var totInc=filtered.filter(function(e){return String(e.type).trim().toLowerCase()==='income';}).reduce(function(s,e){return s+parseFloat(e.amount);},0);
+  var totExp=filtered.filter(function(e){return String(e.type).trim().toLowerCase()==='expense';}).reduce(function(s,e){return s+parseFloat(e.amount);},0);
   rows.push({});
   rows.push({'Date':'TOTAL INCOME','Type':'','Amount (₹)':parseFloat(totInc.toFixed(2)),'Category':'','Description':'','Entered By':''});
   rows.push({'Date':'TOTAL EXPENSE','Type':'','Amount (₹)':parseFloat(totExp.toFixed(2)),'Category':'','Description':'','Entered By':''});

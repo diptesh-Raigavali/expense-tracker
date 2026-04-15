@@ -319,6 +319,13 @@ var GAS_KEY   = 'et_gas_url';
 var NAMES_KEY = 'et_names';
 var USER_KEY  = 'et_user';
 
+// ═══════════════════════════════════════════════════════
+// ADMIN: PASTE YOUR APPS SCRIPT URL BETWEEN THE QUOTES
+// After setting this, upload to GitHub — no one will
+// ever need to enter the URL again on any device.
+// ═══════════════════════════════════════════════════════
+var HARDCODED_GAS = 'https://script.google.com/macros/s/AKfycbzUvCt9kXD4DD0GNdsNJ9ufYYnI4DKucfOOuz-zdYvEQWWbAoqVByAqCCjiitxe1nIi/exec';
+
 var CAT_LABELS = {
   'Salary':'Salary',
   'RanjitMonthly':'From Ranjit Monthly',
@@ -346,7 +353,34 @@ var toToday = function(){ return new Date().toISOString().split('T')[0]; };
 var toMonth = function(){ return new Date().toISOString().slice(0,7); };
 
 function getNames(){ try{ return JSON.parse(localStorage.getItem(NAMES_KEY)||'[]'); }catch(e){ return []; } }
-function saveName(n){ var a=getNames().filter(function(x){return x!==n;}); a.unshift(n); localStorage.setItem(NAMES_KEY,JSON.stringify(a.slice(0,6))); }
+function saveName(n){ var a=getNames().filter(function(x){return x!==n;}); a.unshift(n); try{localStorage.setItem(NAMES_KEY,JSON.stringify(a.slice(0,6)));}catch(e){} }
+
+// Cookie helpers — survive Safari closing localStorage
+function setCookie(k,v,days){
+  var d=new Date(); d.setTime(d.getTime()+(days*24*60*60*1000));
+  document.cookie=k+'='+encodeURIComponent(v)+';expires='+d.toUTCString()+';path=/;SameSite=Lax';
+}
+function getCookie(k){
+  var name=k+'=';
+  var ca=document.cookie.split(';');
+  for(var i=0;i<ca.length;i++){
+    var c=ca[i].trim();
+    if(c.indexOf(name)===0) return decodeURIComponent(c.substring(name.length));
+  }
+  return '';
+}
+function saveGASUrl(url){
+  try{ localStorage.setItem(GAS_KEY,url); }catch(e){}
+  setCookie(GAS_KEY, url, 365);
+}
+function saveUserName(n){
+  try{ sessionStorage.setItem(USER_KEY,n); }catch(e){}
+  setCookie(USER_KEY, n, 30);
+}
+function clearUser(){
+  try{ sessionStorage.removeItem(USER_KEY); }catch(e){}
+  setCookie(USER_KEY,'',0);
+}
 
 function show(id){
   ['s0','s1','s2'].forEach(function(x){ document.getElementById(x).style.display='none'; });
@@ -354,11 +388,25 @@ function show(id){
 }
 
 window.onload = function(){
-  var savedGAS = localStorage.getItem(GAS_KEY);
+  // Use hardcoded URL first — works on all devices, no entry needed
+  if(HARDCODED_GAS && HARDCODED_GAS.length > 10){
+    GAS = HARDCODED_GAS;
+    // Also save to localStorage as cache
+    try{ localStorage.setItem(GAS_KEY, GAS); }catch(e){}
+    buildChips();
+    var lastUser = sessionStorage.getItem(USER_KEY) || getCookie(USER_KEY);
+    if(lastUser){ user=lastUser; launch(); return; }
+    show('s1');
+    return;
+  }
+  // Fallback: try localStorage, then cookie
+  var savedGAS = '';
+  try{ savedGAS = localStorage.getItem(GAS_KEY)||''; }catch(e){}
+  if(!savedGAS){ savedGAS = getCookie(GAS_KEY); }
   if(!savedGAS){ show('s0'); return; }
   GAS = savedGAS;
   buildChips();
-  var lastUser = sessionStorage.getItem(USER_KEY);
+  var lastUser = sessionStorage.getItem(USER_KEY) || getCookie(USER_KEY);
   if(lastUser){ user=lastUser; launch(); return; }
   show('s1');
 };
@@ -380,7 +428,7 @@ function saveGAS(){
       btn.disabled=false; btn.textContent='Save & Connect';
       return;
     }
-    localStorage.setItem(GAS_KEY,url);
+    saveGASUrl(url);
     buildChips(); show('s1');
   });
 }
@@ -388,7 +436,9 @@ function saveGAS(){
 function showGASErr(msg){ var el=document.getElementById('gasErr'); el.textContent=msg; el.style.display='block'; }
 function resetGAS(){
   if(!confirm('Change the Google Sheet URL?')) return;
-  localStorage.removeItem(GAS_KEY); GAS=''; show('s0');
+  try{localStorage.removeItem(GAS_KEY);}catch(e){}
+  setCookie(GAS_KEY,'',0);
+  GAS=''; show('s0');
 }
 
 function buildChips(){
@@ -403,12 +453,12 @@ function buildChips(){
 function doLogin(){
   var n=document.getElementById('nameIn').value.trim();
   if(!n){ toast('Enter your name'); return; }
-  user=n; saveName(n); sessionStorage.setItem(USER_KEY,n); launch();
+  user=n; saveName(n); saveUserName(n); launch();
 }
-function quickLogin(n){ user=n; sessionStorage.setItem(USER_KEY,n); launch(); }
+function quickLogin(n){ user=n; saveUserName(n); launch(); }
 function doLogout(){
   clearInterval(timer); user=''; data=[];
-  sessionStorage.removeItem(USER_KEY);
+  clearUser();
   document.getElementById('nameIn').value='';
   buildChips(); show('s1');
 }

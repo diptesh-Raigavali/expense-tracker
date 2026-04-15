@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Income & Expense Tracker</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;font-size:16px}
+  h2{font-size:18px;font-weight:600;margin-bottom:14px}
+  .page{max-width:700px;margin:0 auto;padding:20px 16px 60px}
+  .center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .box{background:#fff;border-radius:16px;padding:28px 22px;width:100%;max-width:400px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+  .box h1{font-size:22px;font-weight:700;margin-bottom:6px}
+  .box p{color:#666;font-size:14px;margin-bottom:22px;line-height:1.5}
+  label{display:block;font-size:13px;color:#555;margin-bottom:4px;margin-top:12px}
+  input,select{width:100%;border:1px solid #ddd;border-radius:10px;padding:12px 13px;font-size:16px;color:#1c1c1e;background:#fff;-webkit-appearance:none;appearance:none}
+  input:focus,select:focus{outline:none;border-color:#007AFF}
+  .btn{width:100%;background:#007AFF;color:#fff;border:none;border-radius:10px;padding:13px;font-size:16px;font-weight:600;cursor:pointer;margin-top:14px}
+  .btn:active{opacity:.85}
+  .btn:disabled{opacity:.4}
+  .err{background:#FFEBEB;color:#CC0000;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;display:none}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .chip{background:#f2f2f7;border:1px solid #e0e0e5;border-radius:20px;padding:7px 15px;font-size:14px;cursor:pointer;color:#1c1c1e}
+  .chip:active{background:#e0e0e5}
+  .chip-lbl{font-size:13px;color:#888;margin-top:14px;margin-bottom:4px}
+  .note{background:#E3F2FD;color:#0D47A1;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:12px;line-height:1.5}
+
+  /* Top bar */
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .topbar h1{font-size:20px;font-weight:700}
+  .who{font-size:14px;color:#555}
+  .btn-sm{background:none;border:1px solid #ddd;border-radius:8px;padding:6px 12px;font-size:13px;color:#555;cursor:pointer}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+  .stat{background:#fff;border-radius:12px;padding:14px}
+  .stat .lbl{font-size:11px;color:#888;margin-bottom:4px;line-height:1.3}
+  .stat .val{font-size:18px;font-weight:700}
+  .stat .val.green{color:#34C759}
+  .stat .val.red{color:#FF3B30}
+  .stat .val.blue{color:#007AFF}
+
+  /* Tab switcher */
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:0;background:#fff;border-radius:12px;padding:4px;margin-bottom:14px;border:1px solid #eee}
+  .tab{padding:10px;text-align:center;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;color:#888;transition:all .2s}
+  .tab.active-exp{background:#FF3B30;color:#fff}
+  .tab.active-inc{background:#34C759;color:#fff}
+
+  /* Card */
+  .card{background:#fff;border-radius:14px;padding:18px;margin-bottom:14px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .field{margin-bottom:10px}
+  .field label{margin-top:0}
+
+  /* Add buttons */
+  .btn-exp{width:100%;background:#FF3B30;color:#fff;border:none;border-radius:10px;padding:13px;font-size:16px;font-weight:600;cursor:pointer;margin-top:4px}
+  .btn-exp:active{opacity:.85}
+  .btn-exp:disabled{opacity:.4}
+  .btn-inc{width:100%;background:#34C759;color:#fff;border:none;border-radius:10px;padding:13px;font-size:16px;font-weight:600;cursor:pointer;margin-top:4px}
+  .btn-inc:active{opacity:.85}
+  .btn-inc:disabled{opacity:.4}
+
+  /* Filters */
+  .filter-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .btn-export{width:100%;background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;border-radius:10px;padding:11px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:12px}
+  .btn-export:active{opacity:.8}
+
+  /* Sync */
+  .sync-row{display:flex;align-items:center;gap:8px;font-size:13px;color:#888;margin-bottom:10px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0}
+  .dot.ok{background:#34C759}
+  .dot.busy{background:#FF9500;animation:blink 1s infinite}
+  .dot.err{background:#FF3B30}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* Table */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11px;font-weight:600;color:#888;padding:6px 8px;border-bottom:1px solid #f0f0f0;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  td{padding:11px 8px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .amt-exp{font-weight:700;color:#FF3B30}
+  .amt-inc{font-weight:700;color:#34C759}
+  .by{font-size:12px;color:#888}
+  .type-badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-bottom:3px}
+  .type-exp{background:#FFEBEE;color:#C62828}
+  .type-inc{background:#E8F5E9;color:#1B5E20}
+  .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+
+  /* Expense category badges */
+  .cat-Housing{background:#FFF3E0;color:#E65100}
+  .cat-MummyMonthly{background:#FCE4EC;color:#880E4F}
+  .cat-MFSip{background:#E8F5E9;color:#1B5E20}
+  .cat-ElectricityGas{background:#FFF8E1;color:#F57F17}
+  .cat-LaptopEMI{background:#E3F2FD;color:#0D47A1}
+  .cat-Travelling{background:#E0F7FA;color:#006064}
+  .cat-Miscellaneous{background:#F5F5F5;color:#424242}
+  .cat-Household{background:#EDE7F6;color:#311B92}
+  .cat-DiptiMonthly{background:#FCE4EC;color:#880E4F}
+  .cat-MobileWifi{background:#E8EAF6;color:#1A237E}
+  .cat-DahisarRent{background:#FBE9E7;color:#BF360C}
+  .cat-MaouliDarshan{background:#F3E5F5;color:#4A148C}
+  .cat-DailyExpenses{background:#E0F2F1;color:#004D40}
+  .cat-ExpOther{background:#F5F5F5;color:#424242}
+  /* Income category badges */
+  .cat-Salary{background:#E8F5E9;color:#1B5E20}
+  .cat-RanjitMonthly{background:#E3F2FD;color:#0D47A1}
+  .cat-MaouliRent{background:#F3E5F5;color:#4A148C}
+  .cat-ChawlRent{background:#FFF8E1;color:#F57F17}
+  .cat-IncOther{background:#E0F7FA;color:#006064}
+
+  .del{background:none;border:none;font-size:16px;color:#ccc;cursor:pointer;padding:4px 6px}
+  .del:active{color:#FF3B30}
+  .empty{text-align:center;padding:30px;color:#aaa;font-size:14px}
+
+  #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:#1c1c1e;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;opacity:0;transition:all .25s;z-index:999;white-space:nowrap;pointer-events:none}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+
+<!-- SCREEN 0: Connect Google Sheet -->
+<div id="s0" class="center" style="display:none">
+  <div class="box">
+    <h1>Connect Google Sheet</h1>
+    <p>Paste your Apps Script Web App URL. Saved on this device — never asked again.</p>
+    <label>Apps Script URL</label>
+    <input type="url" id="gasInput" placeholder="https://script.google.com/macros/s/.../exec"/>
+    <div class="err" id="gasErr"></div>
+    <div class="note">
+      Go to <strong>script.google.com</strong> → paste Apps Script code → Run <strong>setup</strong> → Deploy as Web App (Execute as: Me, Access: Anyone) → copy <strong>/exec</strong> URL here.
+    </div>
+    <button class="btn" id="gasBtn" onclick="saveGAS()">Save &amp; Connect</button>
+  </div>
+</div>
+
+<!-- SCREEN 1: Name login -->
+<div id="s1" class="center" style="display:none">
+  <div class="box">
+    <h1>Income &amp; Expense Tracker</h1>
+    <p>Enter your name to continue. All data is shared with your team.</p>
+    <label>Your name</label>
+    <input type="text" id="nameIn" placeholder="e.g. Ravi Sharma" maxlength="40"
+           autocomplete="name" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="btn" onclick="doLogin()">Continue</button>
+    <div id="chipsWrap" style="display:none">
+      <p class="chip-lbl">Recent — tap to sign in:</p>
+      <div class="chips" id="chips"></div>
+    </div>
+    <p style="font-size:12px;color:#bbb;text-align:center;margin-top:18px;cursor:pointer" onclick="resetGAS()">Change Google Sheet URL</p>
+  </div>
+</div>
+
+<!-- SCREEN 2: Main App -->
+<div id="s2" style="display:none">
+  <div class="page">
+
+    <div class="topbar">
+      <h1>Tracker</h1>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="who" id="whoLbl"></span>
+        <button class="btn-sm" onclick="doLogout()">Switch</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="lbl">Income this month</div><div class="val green" id="s-inc">₹0</div></div>
+      <div class="stat"><div class="lbl">Expense this month</div><div class="val red" id="s-exp">₹0</div></div>
+      <div class="stat"><div class="lbl">Balance this month</div><div class="val blue" id="s-bal">₹0</div></div>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="tabs">
+      <div class="tab active-exp" id="tab-exp" onclick="switchTab('expense')">- Expense</div>
+      <div class="tab" id="tab-inc" onclick="switchTab('income')">+ Income</div>
+    </div>
+
+    <!-- Add Expense Form -->
+    <div class="card" id="form-expense">
+      <h2>Add Expense</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Amount (₹)</label>
+          <input type="number" id="eAmt" placeholder="0" min="0" inputmode="decimal"/>
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="eCat">
+            <option value="">Select...</option>
+            <option value="Housing">Housing (Rent/Mortgage/Tax)</option>
+            <option value="MummyMonthly">Mummy Monthly</option>
+            <option value="MFSip">MF Sip</option>
+            <option value="ElectricityGas">Electricity and Gas</option>
+            <option value="LaptopEMI">Laptop EMI</option>
+            <option value="Travelling">Travelling and Other</option>
+            <option value="Miscellaneous">Miscellaneous Expenses</option>
+            <option value="Household">Household (Dmart)</option>
+            <option value="DiptiMonthly">Dipti Monthly</option>
+            <option value="MobileWifi">Mobile and Wifi</option>
+            <option value="DahisarRent">Dahisar Sarita Rent</option>
+            <option value="MaouliDarshan">Maouli Darshan Maintenance</option>
+            <option value="DailyExpenses">Daily Expenses</option>
+            <option value="ExpOther">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Description</label><input type="text" id="eDesc" placeholder="Details about this expense" maxlength="100"/></div>
+      <div class="field"><label>Date</label><input type="date" id="eDate"/></div>
+      <button class="btn-exp" id="addExpBtn" onclick="doAdd('expense')">Add Expense</button>
+    </div>
+
+    <!-- Add Income Form -->
+    <div class="card" id="form-income" style="display:none">
+      <h2>Add Income</h2>
+      <div class="row2">
+        <div class="field">
+          <label>Amount (₹)</label>
+          <input type="number" id="iAmt" placeholder="0" min="0" inputmode="decimal"/>
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="iCat">
+            <option value="">Select...</option>
+            <option value="Salary">Salary</option>
+            <option value="RanjitMonthly">From Ranjit Monthly</option>
+            <option value="MaouliRent">Maooli Darshan Rent</option>
+            <option value="ChawlRent">Chawl Rent</option>
+            <option value="IncOther">Other Income</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Description</label><input type="text" id="iDesc" placeholder="Details about this income" maxlength="100"/></div>
+      <div class="field"><label>Date</label><input type="date" id="iDate"/></div>
+      <button class="btn-inc" id="addIncBtn" onclick="doAdd('income')">Add Income</button>
+    </div>
+
+    <!-- All Entries -->
+    <div class="card">
+      <h2>All Entries</h2>
+      <div class="filter-row">
+        <div class="field"><label>Month</label><input type="month" id="fMonth" onchange="render()"/></div>
+        <div class="field">
+          <label>Type</label>
+          <select id="fType" onchange="render()">
+            <option value="">All</option>
+            <option value="income">Income only</option>
+            <option value="expense">Expense only</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="field">
+          <label>Person</label>
+          <select id="fPerson" onchange="render()"><option value="">Everyone</option></select>
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="fCat" onchange="render()">
+            <option value="">All categories</option>
+            <optgroup label="── Income ──">
+              <option value="Salary">Salary</option>
+              <option value="RanjitMonthly">From Ranjit Monthly</option>
+              <option value="MaouliRent">Maooli Darshan Rent</option>
+              <option value="ChawlRent">Chawl Rent</option>
+              <option value="IncOther">Other Income</option>
+            </optgroup>
+            <optgroup label="── Expense ──">
+              <option value="Housing">Housing</option>
+              <option value="MummyMonthly">Mummy Monthly</option>
+              <option value="MFSip">MF Sip</option>
+              <option value="ElectricityGas">Electricity and Gas</option>
+              <option value="LaptopEMI">Laptop EMI</option>
+              <option value="Travelling">Travelling</option>
+              <option value="Miscellaneous">Miscellaneous</option>
+              <option value="Household">Household (Dmart)</option>
+              <option value="DiptiMonthly">Dipti Monthly</option>
+              <option value="MobileWifi">Mobile and Wifi</option>
+              <option value="DahisarRent">Dahisar Sarita Rent</option>
+              <option value="MaouliDarshan">Maouli Darshan Maint.</option>
+              <option value="DailyExpenses">Daily Expenses</option>
+              <option value="ExpOther">Other Expense</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <button class="btn-export" onclick="doExport()">⬇ Download Excel</button>
+      <div class="sync-row"><div class="dot busy" id="dot"></div><span id="syncTxt">Loading...</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>By</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty" style="display:none">No entries found.</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+var GAS  = '';
+var user = '';
+var data = [];
+var timer = null;
+var GAS_KEY   = 'et_gas_url';
+var NAMES_KEY = 'et_names';
+var USER_KEY  = 'et_user';
+
+var CAT_LABELS = {
+  'Salary':'Salary',
+  'RanjitMonthly':'From Ranjit Monthly',
+  'MaouliRent':'Maooli Darshan Rent',
+  'ChawlRent':'Chawl Rent',
+  'IncOther':'Other Income',
+  'Housing':'Housing (Rent/Mortgage/Tax)',
+  'MummyMonthly':'Mummy Monthly',
+  'MFSip':'MF Sip',
+  'ElectricityGas':'Electricity and Gas',
+  'LaptopEMI':'Laptop EMI',
+  'Travelling':'Travelling and Other',
+  'Miscellaneous':'Miscellaneous Expenses',
+  'Household':'Household (Dmart)',
+  'DiptiMonthly':'Dipti Monthly',
+  'MobileWifi':'Mobile and Wifi',
+  'DahisarRent':'Dahisar Sarita Rent',
+  'MaouliDarshan':'Maouli Darshan Maintenance',
+  'DailyExpenses':'Daily Expenses',
+  'ExpOther':'Other'
+};
+
+var fmt     = function(n){ return '₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+var toToday = function(){ return new Date().toISOString().split('T')[0]; };
+var toMonth = function(){ return new Date().toISOString().slice(0,7); };
+
+function getNames(){ try{ return JSON.parse(localStorage.getItem(NAMES_KEY)||'[]'); }catch(e){ return []; } }
+function saveName(n){ var a=getNames().filter(function(x){return x!==n;}); a.unshift(n); localStorage.setItem(NAMES_KEY,JSON.stringify(a.slice(0,6))); }
+
+function show(id){
+  ['s0','s1','s2'].forEach(function(x){ document.getElementById(x).style.display='none'; });
+  document.getElementById(id).style.display=(id==='s2')?'block':'flex';
+}
+
+window.onload = function(){
+  var savedGAS = localStorage.getItem(GAS_KEY);
+  if(!savedGAS){ show('s0'); return; }
+  GAS = savedGAS;
+  buildChips();
+  var lastUser = sessionStorage.getItem(USER_KEY);
+  if(lastUser){ user=lastUser; launch(); return; }
+  show('s1');
+};
+
+function saveGAS(){
+  var url = document.getElementById('gasInput').value.trim();
+  var errEl = document.getElementById('gasErr');
+  errEl.style.display='none';
+  if(!url){ showGASErr('Please paste the URL.'); return; }
+  if(url.indexOf('https://script.google.com')!==0){ showGASErr('URL must start with https://script.google.com'); return; }
+  if(url.indexOf('/exec')===-1){ showGASErr('URL must end with /exec'); return; }
+  var btn=document.getElementById('gasBtn');
+  btn.disabled=true; btn.textContent='Testing connection...';
+  GAS=url;
+  gasCall({action:'getAll'},function(err,res){
+    if(err||(res&&res.error)){
+      GAS='';
+      showGASErr('Connection failed. Check: (1) Deployed as Web App, (2) Access = Anyone, (3) Script authorized.');
+      btn.disabled=false; btn.textContent='Save & Connect';
+      return;
+    }
+    localStorage.setItem(GAS_KEY,url);
+    buildChips(); show('s1');
+  });
+}
+
+function showGASErr(msg){ var el=document.getElementById('gasErr'); el.textContent=msg; el.style.display='block'; }
+function resetGAS(){
+  if(!confirm('Change the Google Sheet URL?')) return;
+  localStorage.removeItem(GAS_KEY); GAS=''; show('s0');
+}
+
+function buildChips(){
+  var names=getNames(), wrap=document.getElementById('chipsWrap');
+  if(!names.length){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  document.getElementById('chips').innerHTML=names.map(function(n){
+    return '<button class="chip" onclick="quickLogin(\''+n.replace(/'/g,"\\'")+'\')">'+n+'</button>';
+  }).join('');
+}
+
+function doLogin(){
+  var n=document.getElementById('nameIn').value.trim();
+  if(!n){ toast('Enter your name'); return; }
+  user=n; saveName(n); sessionStorage.setItem(USER_KEY,n); launch();
+}
+function quickLogin(n){ user=n; sessionStorage.setItem(USER_KEY,n); launch(); }
+function doLogout(){
+  clearInterval(timer); user=''; data=[];
+  sessionStorage.removeItem(USER_KEY);
+  document.getElementById('nameIn').value='';
+  buildChips(); show('s1');
+}
+
+function launch(){
+  show('s2');
+  document.getElementById('whoLbl').textContent=user;
+  document.getElementById('eDate').value=toToday();
+  document.getElementById('iDate').value=toToday();
+  document.getElementById('fMonth').value=toMonth();
+  fetchData();
+  timer=setInterval(fetchData,25000);
+}
+
+function switchTab(type){
+  if(type==='expense'){
+    document.getElementById('tab-exp').className='tab active-exp';
+    document.getElementById('tab-inc').className='tab';
+    document.getElementById('form-expense').style.display='block';
+    document.getElementById('form-income').style.display='none';
+  } else {
+    document.getElementById('tab-inc').className='tab active-inc';
+    document.getElementById('tab-exp').className='tab';
+    document.getElementById('form-income').style.display='block';
+    document.getElementById('form-expense').style.display='none';
+  }
+}
+
+function gasCall(params,cb){
+  var url=new URL(GAS);
+  Object.keys(params).forEach(function(k){ url.searchParams.set(k,params[k]); });
+  fetch(url.toString(),{method:'GET',redirect:'follow',cache:'no-cache'})
+    .then(function(r){ return r.text(); })
+    .then(function(t){
+      var s=t.indexOf('{'),e=t.lastIndexOf('}');
+      if(s===-1) throw new Error('Bad response');
+      cb(null,JSON.parse(t.slice(s,e+1)));
+    })
+    .catch(function(e){ cb(e); });
+}
+
+function setSync(state,msg){
+  document.getElementById('dot').className='dot '+state;
+  document.getElementById('syncTxt').textContent=msg;
+}
+
+function fetchData(){
+  setSync('busy','Syncing with Google Sheets...');
+  gasCall({action:'getAll'},function(err,res){
+    if(err||(res&&res.error)){ setSync('err','Sync failed — '+(err?err.message:res.error)); return; }
+    data=res.expenses||[];
+    render(); updateStats();
+    var t=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    setSync('ok','Synced '+t+' · '+data.length+' entries');
+  });
+}
+
+function doAdd(type){
+  var amt  = parseFloat(document.getElementById(type==='expense'?'eAmt':'iAmt').value);
+  var cat  = document.getElementById(type==='expense'?'eCat':'iCat').value;
+  var desc = document.getElementById(type==='expense'?'eDesc':'iDesc').value.trim();
+  var date = document.getElementById(type==='expense'?'eDate':'iDate').value;
+  if(!amt||amt<=0){ toast('Enter a valid amount'); return; }
+  if(!cat){ toast('Select a category'); return; }
+  if(!desc){ toast('Add a description'); return; }
+  if(!date){ toast('Pick a date'); return; }
+  var btnId = type==='expense'?'addExpBtn':'addIncBtn';
+  var btn   = document.getElementById(btnId);
+  btn.disabled=true; btn.textContent='Saving...';
+  gasCall({action:'add',amount:amt,cat:cat,desc:desc,date:date,by:user,type:type},function(err,res){
+    if(err||(res&&res.error)){
+      toast('Save failed: '+(err?err.message:res.error));
+      btn.disabled=false; btn.textContent=type==='expense'?'Add Expense':'Add Income';
+      return;
+    }
+    document.getElementById(type==='expense'?'eAmt':'iAmt').value='';
+    document.getElementById(type==='expense'?'eDesc':'iDesc').value='';
+    document.getElementById(type==='expense'?'eCat':'iCat').value='';
+    document.getElementById(type==='expense'?'eDate':'iDate').value=toToday();
+    fetchData();
+    toast('Saved to Google Sheets!');
+    btn.disabled=false; btn.textContent=type==='expense'?'Add Expense':'Add Income';
+  });
+}
+
+function doDelete(id){
+  if(!confirm('Delete this entry?')) return;
+  gasCall({action:'delete',id:id},function(err,res){
+    if(err||(res&&res.error)){ toast('Delete failed'); return; }
+    fetchData(); toast('Deleted');
+  });
+}
+
+function getFiltered(){
+  var m=document.getElementById('fMonth').value;
+  var p=document.getElementById('fPerson').value;
+  var c=document.getElementById('fCat').value;
+  var tp=document.getElementById('fType').value;
+  return data.filter(function(e){
+    if(m && String(e.date).indexOf(m)!==0) return false;
+    if(p && e.by!==p) return false;
+    if(c && e.cat!==c) return false;
+    if(tp && e.type!==tp) return false;
+    return true;
+  }).sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+}
+
+function render(){
+  var filtered=getFiltered();
+  var people=[];
+  data.forEach(function(e){ if(people.indexOf(e.by)===-1) people.push(e.by); });
+  people.sort();
+  var sel=document.getElementById('fPerson'),cur=sel.value;
+  sel.innerHTML='<option value="">Everyone</option>'+people.map(function(p){
+    return '<option'+(p===cur?' selected':'')+'>'+p+'</option>';
+  }).join('');
+  var tbody=document.getElementById('tbody');
+  var empty=document.getElementById('empty');
+  if(!filtered.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML=filtered.map(function(e){
+    var isInc = String(e.type).trim()==='income';
+    var cls   = 'cat-'+(e.cat||'ExpOther');
+    var label = CAT_LABELS[e.cat]||e.cat||'Other';
+    var short = label.length>15 ? label.slice(0,13)+'…' : label;
+    var amtCls = isInc ? 'amt-inc' : 'amt-exp';
+    var sign   = isInc ? '+' : '-';
+    return '<tr>'
+      +'<td>'+e.date+'</td>'
+      +'<td class="'+amtCls+'">'+sign+fmt(e.amount)+'</td>'
+      +'<td>'
+        +'<div><span class="type-badge '+(isInc?'type-inc':'type-exp')+'">'+(isInc?'IN':'OUT')+'</span></div>'
+        +'<span class="badge '+cls+'" title="'+label+'">'+short+'</span>'
+      +'</td>'
+      +'<td style="color:#555;font-size:13px">'+e.desc+'</td>'
+      +'<td class="by">'+e.by+'</td>'
+      +'<td><button class="del" onclick="doDelete(\''+e.id+'\')">✕</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function updateStats(){
+  var m=toMonth();
+  var mData=data.filter(function(e){ return String(e.date).indexOf(m)===0; });
+  var mInc=mData.filter(function(e){ return String(e.type).trim()==='income'; }).reduce(function(s,e){ return s+(parseFloat(e.amount)||0); },0);
+  var mExp=mData.filter(function(e){ return String(e.type).trim()!=='income'; }).reduce(function(s,e){ return s+(parseFloat(e.amount)||0); },0);
+  var mBal=mInc-mExp;
+  document.getElementById('s-inc').textContent=fmt(mInc);
+  document.getElementById('s-exp').textContent=fmt(mExp);
+  var balEl=document.getElementById('s-bal');
+  balEl.textContent=(mBal>=0?'+':'')+fmt(Math.abs(mBal));
+  balEl.className='val '+(mBal>=0?'green':'red');
+}
+
+function doExport(){
+  var filtered=getFiltered();
+  if(!filtered.length){ toast('No data to export'); return; }
+  var month=document.getElementById('fMonth').value||'all';
+  var rows=filtered.map(function(e){
+    return {
+      'Date':e.date,
+      'Type':String(e.type).trim()==='income'?'Income':'Expense',
+      'Amount (₹)':parseFloat(e.amount),
+      'Category':CAT_LABELS[e.cat]||e.cat,
+      'Description':e.desc,
+      'Entered By':e.by
+    };
+  });
+  var totInc=filtered.filter(function(e){return String(e.type).trim()==='income';}).reduce(function(s,e){return s+parseFloat(e.amount);},0);
+  var totExp=filtered.filter(function(e){return String(e.type).trim()!=='income';}).reduce(function(s,e){return s+parseFloat(e.amount);},0);
+  rows.push({});
+  rows.push({'Date':'TOTAL INCOME','Type':'','Amount (₹)':parseFloat(totInc.toFixed(2)),'Category':'','Description':'','Entered By':''});
+  rows.push({'Date':'TOTAL EXPENSE','Type':'','Amount (₹)':parseFloat(totExp.toFixed(2)),'Category':'','Description':'','Entered By':''});
+  rows.push({'Date':'BALANCE','Type':'','Amount (₹)':parseFloat((totInc-totExp).toFixed(2)),'Category':'','Description':'','Entered By':''});
+  var ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:10},{wch:14},{wch:28},{wch:34},{wch:18}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Tracker '+month);
+  XLSX.writeFile(wb,'tracker_'+month+'.xlsx');
+  toast('Excel downloaded!');
+}
+
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },2500);
+}
+</script>
+</body>
+</html>
